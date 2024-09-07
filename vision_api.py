@@ -1,7 +1,11 @@
 import os
 import io
+import json
+
 from google.cloud import vision
 from google.cloud.vision_v1 import ImageAnnotatorClient
+
+from gemini_api import extract_details 
 
 def set_google_credentials(credentials_path):
     """
@@ -88,6 +92,12 @@ def main():
         
         # Write the detected text to a file
         write_text_to_file(detected_text, output_file_path)
+
+        # Extract details from the raw text
+        extracted_details = extract_details(detected_text)
+        
+        # Print the extracted details in JSON format
+        print(json.dumps(extracted_details, indent=4))
     
     except Exception as e:
         print(f"An error occurred: {e}")
