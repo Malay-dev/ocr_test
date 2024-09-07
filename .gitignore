@@ -3,3 +3,7 @@ service_account_key.json
 /Lib
 /Scripts
 pyvenv.cfg
+
+__pycache__
+
+.env
