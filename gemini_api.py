@@ -2,21 +2,22 @@ import json
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
+from vision_api import detect_text_in_image, create_vision_client, load_image
 
 load_dotenv()
 
 # Set up your Google API key
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 
+def clean_response_text(response_text):
+    """
+    Clean the response text by removing backticks or other unwanted characters.
+    """
+    cleaned_text = response_text.strip().strip("```")
+    return cleaned_text
+
 def extract_details(raw_text):
-    """
-    Extract details from the raw text using Gemini.
-    
-    Args:
-        raw_text (str): The raw text containing product details.
-    Returns:
-        dict: A dictionary with extracted details such as product name, type, ingredients, etc.
-    """
+    """Extract product details from the raw text using Gemini."""
     try:
         # Set up the model
         model = genai.GenerativeModel('gemini-pro')
@@ -33,30 +34,30 @@ Provide the information in the following format:
   "ingredients": "",
   "manufacturer": "",
   "other_details": {{}}
-}}
-
-Ensure that all keys and string values are enclosed in double quotes, and that the entire response is a valid JSON object."""
+}}"""
 
         # Generate content
         response = model.generate_content(prompt)
 
-        # Get the text content of the response
-        response_text = response.text
+        # Check if the response has content
+        if response and hasattr(response, 'text'):
+            response_text = response.text.strip()
+            print(f"Raw Response Text from Gemini API: {response_text}")  # Debugging output
 
-        # Remove any leading or trailing whitespace and newlines
-        response_text = response_text.strip()
+            # Clean the response text to remove backticks
+            cleaned_text = clean_response_text(response_text)
 
-        # If the response is not wrapped in curly braces, add them
-        if not response_text.startswith('{'):
-            response_text = '{' + response_text
-        if not response_text.endswith('}'):
-            response_text = response_text + '}'
+            # Parse the cleaned response into JSON
+            if cleaned_text:
+                extracted_details = json.loads(cleaned_text)
+                return extracted_details
+            else:
+                print("Gemini API returned an empty response.")
+                return {}
+        else:
+            print("No response text received from Gemini API.")
+            return {}
 
-        # Parse the response
-        extracted_details = json.loads(response_text)
-        
-        return extracted_details
-    
     except json.JSONDecodeError as json_error:
         print(f"JSON parsing error: {json_error}")
         print(f"Raw response: {response_text}")
@@ -65,25 +66,26 @@ Ensure that all keys and string values are enclosed in double quotes, and that t
         print(f"An error occurred while extracting details: {e}")
         return {}
 
-def main():
-    # Load the raw text from the file
-    input_file_path = 'D:/google_dev_hack/ocr_test/output_detected_text.txt'
-    
+def process_image(image_path):
+    """Process the image, extract text using Vision API, and extract details."""
     try:
-        with open(input_file_path, 'r', encoding='utf-8') as file:
-            raw_text = file.read()
+        # Create the Vision client
+        client = create_vision_client()
+
+        # Load the image
+        image = load_image(image_path)
+
+        # Detect text in the image
+        raw_text = detect_text_in_image(client, image)
         
-        # Extract details from the raw text
-        extracted_details = extract_details(raw_text)
-        
-        # Print the extracted details in JSON format
-        print(json.dumps(extracted_details, indent=4))
-    
-    except FileNotFoundError:
-        print(f"File not found: {input_file_path}")
+        if raw_text:
+            print(f"Detected text from image: {raw_text}")  # Debugging output
+            # Extract details using the Gemini API
+            return extract_details(raw_text)
+        else:
+            print("No text detected in the image.")
+            return {}
+
     except Exception as e:
-        print(f"An error occurred: {e}")
-
-if __name__ == '__main__':
-    main()
-
+        print(f"An error occurred while processing the image: {e}")
+        return {}
