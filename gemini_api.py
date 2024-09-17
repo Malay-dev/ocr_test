@@ -29,10 +29,10 @@ def extract_details(raw_text):
 
 Provide the information in the following format:
 {{
-  "product_name": "",
-  "product_type": "",
-  "ingredients": "",
-  "manufacturer": "",
+  "food_item_name": "",
+  "food_item_ingredients": "",
+  "food_item_description": "",
+  "food_item_brand": "",
   "other_details": {{}}
 }}"""
 
